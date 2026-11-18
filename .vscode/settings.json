@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "../Notcher",
+        "../Notcher/notcher-apps"
+    ]
+}
