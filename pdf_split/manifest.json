@@ -1,0 +1,11 @@
+{
+  "id": "pdf-split",
+  "name": "PDF Split",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "pdf_split",
+  "bundled": false,
+  "module": "pdf_split",
+  "class": "PDFSplitApp",
+  "api_version": 1
+}

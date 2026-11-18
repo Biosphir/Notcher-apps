@@ -1,0 +1,46 @@
+[
+  {
+    "id": "pdf-converter",
+    "name": "PDF Converter",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "file_converter",
+    "bundled": true,
+    "module": "pdf_converter",
+    "class": "PDFConverterApp",
+    "api_version": 1
+  },
+  {
+    "id": "pdf-merger",
+    "name": "PDF Merger",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "pdf_merger",
+    "bundled": false,
+    "module": "pdf_merger",
+    "class": "PDFMergerApp",
+    "api_version": 1
+  },
+  {
+    "id": "pdf-split",
+    "name": "PDF Split",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "pdf_split",
+    "bundled": false,
+    "module": "pdf_split",
+    "class": "PDFSplitApp",
+    "api_version": 1
+  },
+  {
+    "id": "quick-search",
+    "name": "Quick Search",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "quick_search",
+    "bundled": false,
+    "module": "quick_search",
+    "class": "QuickSearch",
+    "api_version": 1
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "id": "pdf-converter",
+  "name": "PDF Converter",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "file_converter",
+  "bundled": true,
+  "module": "pdf_converter",
+  "class": "PDFConverterApp",
+  "api_version": 1
+}

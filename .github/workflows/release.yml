@@ -1,0 +1,20 @@
+name: Publish app packages
+on:
+  push:
+    tags:
+      - 'apps-v*'
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python build_packages.py --tag "${{ github.ref_name }}"
+      - run: gh release create "$TAG" dist/*.notcher-app dist/catalog.json --title "$TAG" --notes "Individual Notcher app packages. Install only the apps you need."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
