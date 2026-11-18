@@ -1,3 +1,4 @@
+from shared.window import NotcherFileDialog as QFileDialog
 from notcher_widgets import asset_icon
 from pathlib import Path
 from notcher_widgets import NoWheelComboBox
@@ -9,7 +10,7 @@ from PySide6.QtGui import QPixmap
 
 
 
-from PySide6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget, QStackedWidget, QFileDialog, QProgressBar
+from PySide6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget, QStackedWidget, QProgressBar
 
 
 

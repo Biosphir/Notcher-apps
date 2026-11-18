@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 * { box-sizing: border-box; }
-body { margin: 0; background: #080808; color: #f5f5f5; font: 14px "Segoe UI", sans-serif; padding: 22px; }
+body { margin: 0; background: #080808; color: #f5f5f5; font: 14px "Segoe UI", sans-serif; padding: 0; }
 h1 { font-size: 24px; margin: 0 0 8px; }
 p { color: #aaa; line-height: 1.5; margin: 8px 0 16px; }
 button { background: #252525; color: #f5f5f5; border: 1px solid #454545; border-radius: 6px; padding: 9px 13px; cursor: pointer; }
 button:hover { background: #353535; }
 button:disabled { opacity: .4; cursor: default; }
-button.primary { background: #863978; border-color: #a73a93; }
+button.primary { background: #a73a93; border-color: #a73a93; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 label { display: block; color: #ccc; margin-bottom: 6px; }
 textarea { width: 100%; min-height: 76px; resize: vertical; background: #171717; color: #eee; border: 1px solid #383838; border-radius: 6px; padding: 9px; font: 12px monospace; }
@@ -26,7 +26,6 @@ section[hidden], div[hidden], button[hidden] { display: none; }
 </style>
 </head>
 <body>
-<h1>Share Screen</h1>
 <p>Connect with another Notcher user using invitation and response codes.</p>
 <div class="actions">
 <button id="share" class="primary">Start sharing</button>

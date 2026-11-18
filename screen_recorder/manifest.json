@@ -1,0 +1,13 @@
+{
+  "id": "screen-recorder",
+  "name": "Screen Recorder",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "screen_recorder",
+  "bundled": false,
+  "module": "screen_recorder",
+  "class": "ScreenRecorder",
+  "api_version": 1,
+  "ui": "window",
+  "description": "Record a connected display to an MP4 video, with pause, resume, a live preview and recording duration."
+}

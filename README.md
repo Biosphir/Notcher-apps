@@ -10,6 +10,9 @@ Each app is released as an independent `.notcher-app` ZIP package. Notcher downl
 | quick_search | Quick Search | No |
 | share_screen | Share Screen | No |
 | extended_display | Extended Display | No |
+| screen_recorder | Screen Recorder | No |
+| focus_timer | Focus Timer | No |
+| color_picker | Color Picker | No |
 
 ## Build and release
 
@@ -21,7 +24,7 @@ The live catalog is available at https://github.com/Biosphir/Notcher-apps/releas
 
 ## Host API
 
-These packages target Notcher 1.8.3 plugin API 1 and run in its Python/Qt process. The host supplies PySide6, the PDF conversion runtime, `notcher_widgets`, and the `shared` modules. Plugins use the host's existing tool views and file-dialog lifecycle. Apps with ui set to "window" provide a standalone QWidget class; Notcher keeps one window per app and closes it on uninstall or exit.
+These packages target Notcher 1.8.3 plugin API 1 and run in its Python/Qt process. The host supplies PySide6, the PDF conversion runtime, `notcher_widgets`, and the `shared` modules. Plugins use the host's existing tool views and file-dialog lifecycle. Apps with ui set to "window" provide a standalone QWidget class; Notcher keeps one window per app and closes it on uninstall or exit. Use the shared NotcherWindow and NotcherDialog classes from shared.window for consistent frameless chrome, rounded black surfaces, controls and fonts. The host also supplies NotcherFileDialog and NotcherMessageBox for file selection and messages.
 
 PDF Converter has a pinned bundled copy in the Notcher repository. A Notcher build includes that copy and the shared runtime. Optional app source is loaded from the installed package directory.
 
@@ -36,3 +39,15 @@ Video uses a direct WebRTC connection with a public STUN server for network disc
 ## Extended Display
 
 This Windows app lists active displays and applies the Windows Extend topology to monitors connected to the PC. Windows display settings is available for monitor arrangement and other settings. The app reports native configuration errors if the connected hardware or Windows session cannot apply Extend mode.
+
+## Screen Recorder
+
+Choose a display and an output path to record an MP4 video. Recording supports pause, resume, a preview and elapsed time. Closing the window stops and saves the recording. An available MP4/H.264 encoder is required.
+
+## Focus Timer
+
+Focus and short/long break durations are adjustable. After four focus sessions, the next break is a long break. Each completed phase emits a notification through Notcher and waits for the user to start the next phase. Minimize keeps the timer running; closing it stops the session.
+
+## Color Picker
+
+The picker freezes snapshots of connected displays. Click a pixel to select its color, or press Escape to cancel. The app displays and copies HEX and RGB values and remembers the last selected color.

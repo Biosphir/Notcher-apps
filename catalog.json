@@ -2,7 +2,7 @@
   {
     "id": "pdf-converter",
     "name": "PDF Converter",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "min_notcher_version": "1.8.3",
     "entry_point": "file_converter",
     "bundled": true,
@@ -14,7 +14,7 @@
   {
     "id": "pdf-merger",
     "name": "PDF Merger",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "min_notcher_version": "1.8.3",
     "entry_point": "pdf_merger",
     "bundled": false,
@@ -26,7 +26,7 @@
   {
     "id": "pdf-split",
     "name": "PDF Split",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "min_notcher_version": "1.8.3",
     "entry_point": "pdf_split",
     "bundled": false,
@@ -50,7 +50,7 @@
   {
     "id": "share-screen",
     "name": "Share Screen",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "min_notcher_version": "1.8.3",
     "entry_point": "share_screen",
     "bundled": false,
@@ -63,7 +63,7 @@
   {
     "id": "extended-display",
     "name": "Extended Display",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "min_notcher_version": "1.8.3",
     "entry_point": "extended_display",
     "bundled": false,
@@ -72,5 +72,44 @@
     "api_version": 1,
     "ui": "window",
     "description": "Extend the Windows desktop across monitors already connected to your PC and view active displays."
+  },
+  {
+    "id": "screen-recorder",
+    "name": "Screen Recorder",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "screen_recorder",
+    "bundled": false,
+    "module": "screen_recorder",
+    "class": "ScreenRecorder",
+    "api_version": 1,
+    "ui": "window",
+    "description": "Record a connected display to an MP4 video, with pause, resume, a live preview and recording duration."
+  },
+  {
+    "id": "focus-timer",
+    "name": "Focus Timer",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "focus_timer",
+    "bundled": false,
+    "module": "focus_timer",
+    "class": "FocusTimer",
+    "api_version": 1,
+    "ui": "window",
+    "description": "Stay focused with a Pomodoro timer, adjustable focus sessions, short and long breaks, pause and completion reminders."
+  },
+  {
+    "id": "color-picker",
+    "name": "Color Picker",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "color_picker",
+    "bundled": false,
+    "module": "color_picker",
+    "class": "ColorPicker",
+    "api_version": 1,
+    "ui": "window",
+    "description": "Pick a color from any connected display and copy its HEX or RGB value."
   }
 ]

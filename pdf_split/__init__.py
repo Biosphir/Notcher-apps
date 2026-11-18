@@ -1,3 +1,4 @@
+from shared.window import NotcherFileDialog as QFileDialog
 from notcher_widgets import asset_icon
 from pathlib import Path
 from shared.widgets import UploadDropArea
@@ -7,7 +8,7 @@ from PySide6.QtGui import QPixmap
 
 
 
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget, QStackedWidget, QFileDialog, QProgressBar
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget, QStackedWidget, QProgressBar
 
 from .worker import PDFSplitWorker
 

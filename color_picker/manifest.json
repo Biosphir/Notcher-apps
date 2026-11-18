@@ -1,0 +1,13 @@
+{
+  "id": "color-picker",
+  "name": "Color Picker",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "color_picker",
+  "bundled": false,
+  "module": "color_picker",
+  "class": "ColorPicker",
+  "api_version": 1,
+  "ui": "window",
+  "description": "Pick a color from any connected display and copy its HEX or RGB value."
+}

@@ -6,7 +6,7 @@ from ctypes import wintypes
 from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QGuiApplication
 from PySide6.QtWidgets import (
-    QLabel, QListWidget, QPushButton, QVBoxLayout, QWidget,
+    QLabel, QListWidget, QPushButton,
 )
 
 
@@ -29,25 +29,13 @@ def extend_displays():
         )
 
 
-class ExtendedDisplay(QWidget):
+from shared.window import NotcherWindow
+
+
+class ExtendedDisplay(NotcherWindow):
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Extended Display — Notcher")
-        self.resize(520, 360)
-        self.setMinimumSize(420, 280)
-        self.setStyleSheet(
-            "QWidget { background: #080808; color: #f5f5f5; font-size: 13px; }"
-            "QPushButton { background: #242424; border: 1px solid #383838;"
-            " border-radius: 6px; padding: 8px 12px; }"
-            "QPushButton:hover { background: #343434; }"
-            "QListWidget { background: #111111; border: 1px solid #303030;"
-            " border-radius: 6px; padding: 6px; }"
-        )
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        heading = QLabel("Extended Display")
-        heading.setStyleSheet("font-size: 22px; font-weight: 700;")
-        layout.addWidget(heading)
+        super().__init__("Extended Display", (550, 430), (460, 350))
+        layout = self.body_layout
         explanation = QLabel("Extend your Windows desktop across the monitors connected to this PC.")
         explanation.setWordWrap(True)
         layout.addWidget(explanation)

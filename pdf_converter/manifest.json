@@ -1,7 +1,7 @@
 {
   "id": "pdf-converter",
   "name": "PDF Converter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "min_notcher_version": "1.8.3",
   "entry_point": "file_converter",
   "bundled": true,

@@ -1,0 +1,13 @@
+{
+  "id": "focus-timer",
+  "name": "Focus Timer",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "focus_timer",
+  "bundled": false,
+  "module": "focus_timer",
+  "class": "FocusTimer",
+  "api_version": 1,
+  "ui": "window",
+  "description": "Stay focused with a Pomodoro timer, adjustable focus sessions, short and long breaks, pause and completion reminders."
+}
