@@ -8,7 +8,8 @@
     "bundled": true,
     "module": "pdf_converter",
     "class": "PDFConverterApp",
-    "api_version": 1
+    "api_version": 1,
+    "description": "Convert PDF, Word documents, PNG and JPG images between supported formats."
   },
   {
     "id": "pdf-merger",
@@ -19,7 +20,8 @@
     "bundled": false,
     "module": "pdf_merger",
     "class": "PDFMergerApp",
-    "api_version": 1
+    "api_version": 1,
+    "description": "Merge multiple PDF files into one document and arrange their page order."
   },
   {
     "id": "pdf-split",
@@ -30,7 +32,8 @@
     "bundled": false,
     "module": "pdf_split",
     "class": "PDFSplitApp",
-    "api_version": 1
+    "api_version": 1,
+    "description": "Split a PDF document into separate files for each page."
   },
   {
     "id": "quick-search",
@@ -41,6 +44,7 @@
     "bundled": false,
     "module": "quick_search",
     "class": "QuickSearch",
-    "api_version": 1
+    "api_version": 1,
+    "description": "Search the web or open websites in a tabbed browser inside Notcher."
   }
 ]

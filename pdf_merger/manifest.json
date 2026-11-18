@@ -7,5 +7,6 @@
   "bundled": false,
   "module": "pdf_merger",
   "class": "PDFMergerApp",
-  "api_version": 1
+  "api_version": 1,
+  "description": "Merge multiple PDF files into one document and arrange their page order."
 }

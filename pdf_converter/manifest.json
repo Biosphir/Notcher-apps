@@ -7,5 +7,6 @@
   "bundled": true,
   "module": "pdf_converter",
   "class": "PDFConverterApp",
-  "api_version": 1
+  "api_version": 1,
+  "description": "Convert PDF, Word documents, PNG and JPG images between supported formats."
 }

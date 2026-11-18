@@ -7,5 +7,6 @@
   "bundled": false,
   "module": "quick_search",
   "class": "QuickSearch",
-  "api_version": 1
+  "api_version": 1,
+  "description": "Search the web or open websites in a tabbed browser inside Notcher."
 }

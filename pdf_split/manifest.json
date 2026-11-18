@@ -7,5 +7,6 @@
   "bundled": false,
   "module": "pdf_split",
   "class": "PDFSplitApp",
-  "api_version": 1
+  "api_version": 1,
+  "description": "Split a PDF document into separate files for each page."
 }
