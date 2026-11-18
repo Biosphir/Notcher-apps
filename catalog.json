@@ -46,5 +46,31 @@
     "class": "QuickSearch",
     "api_version": 1,
     "description": "Search the web or open websites in a tabbed browser inside Notcher."
+  },
+  {
+    "id": "share-screen",
+    "name": "Share Screen",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "share_screen",
+    "bundled": false,
+    "module": "share_screen",
+    "class": "ShareScreen",
+    "api_version": 1,
+    "ui": "window",
+    "description": "Share a display or window with another Notcher user over a direct peer-to-peer connection using invitation and response codes."
+  },
+  {
+    "id": "extended-display",
+    "name": "Extended Display",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "extended_display",
+    "bundled": false,
+    "module": "extended_display",
+    "class": "ExtendedDisplay",
+    "api_version": 1,
+    "ui": "window",
+    "description": "Extend the Windows desktop across monitors already connected to your PC and view active displays."
   }
 ]

@@ -1,0 +1,13 @@
+{
+  "id": "share-screen",
+  "name": "Share Screen",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "share_screen",
+  "bundled": false,
+  "module": "share_screen",
+  "class": "ShareScreen",
+  "api_version": 1,
+  "ui": "window",
+  "description": "Share a display or window with another Notcher user over a direct peer-to-peer connection using invitation and response codes."
+}

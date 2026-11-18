@@ -1,0 +1,13 @@
+{
+  "id": "extended-display",
+  "name": "Extended Display",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "extended_display",
+  "bundled": false,
+  "module": "extended_display",
+  "class": "ExtendedDisplay",
+  "api_version": 1,
+  "ui": "window",
+  "description": "Extend the Windows desktop across monitors already connected to your PC and view active displays."
+}

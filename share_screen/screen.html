@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #080808; color: #f5f5f5; font: 14px "Segoe UI", sans-serif; padding: 22px; }
+h1 { font-size: 24px; margin: 0 0 8px; }
+p { color: #aaa; line-height: 1.5; margin: 8px 0 16px; }
+button { background: #252525; color: #f5f5f5; border: 1px solid #454545; border-radius: 6px; padding: 9px 13px; cursor: pointer; }
+button:hover { background: #353535; }
+button:disabled { opacity: .4; cursor: default; }
+button.primary { background: #863978; border-color: #a73a93; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+label { display: block; color: #ccc; margin-bottom: 6px; }
+textarea { width: 100%; min-height: 76px; resize: vertical; background: #171717; color: #eee; border: 1px solid #383838; border-radius: 6px; padding: 9px; font: 12px monospace; }
+textarea:focus { outline: 1px solid #a73a93; }
+main { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; }
+#status { color: #aaa; min-height: 24px; }
+video { width: 100%; background: #111; border-radius: 8px; max-height: 72vh; }
+section[hidden], div[hidden], button[hidden] { display: none; }
+#outbox { margin-top: 16px; }
+#out { min-height: 95px; margin-bottom: 8px; }
+@media (max-width: 720px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>Share Screen</h1>
+<p>Connect with another Notcher user using invitation and response codes.</p>
+<div class="actions">
+<button id="share" class="primary">Start sharing</button>
+<button id="join">Join a screen</button>
+<button id="stop" hidden>Stop session</button>
+</div>
+<div id="status" role="status" aria-live="polite">Ready</div>
+<main>
+<section>
+<div id="inbox" hidden>
+<label id="inputLabel" for="incoming">Invitation code</label>
+<textarea id="incoming" spellcheck="false" placeholder="Paste the other user's code"></textarea>
+<button id="apply" style="margin-top:8px">Create response</button>
+</div>
+<div id="outbox" hidden>
+<label id="outputLabel" for="out">Your code</label>
+<textarea id="out" readonly spellcheck="false"></textarea>
+<button id="copy">Copy code</button>
+<p id="instructions"></p>
+</div>
+</section>
+<section>
+<video id="video" autoplay playsinline controls></video>
+<p id="videoCaption">Choose Start sharing to select a display or window, or Join a screen to watch another user.</p>
+</section>
+</main>
+<script>
+"use strict";
+const element = id => document.getElementById(id);
+let peer = null;
+let stream = null;
+let control = null;
+let mode = null;
+let busy = false;
+let generation = 0;
+
+function status(text) { element("status").textContent = text; }
+function updateControls() {
+    element("share").disabled = busy || peer !== null;
+    element("join").disabled = busy || peer !== null;
+    element("apply").disabled = busy || (
+        mode === "sharing" && peer && peer.signalingState !== "have-local-offer"
+    );
+    element("stop").hidden = !peer && !busy;
+}
+function stopSharing(message) {
+    generation++;
+    const old = peer;
+    peer = null;
+    if (control && control.readyState === "open") {
+        try { control.send("stop"); } catch (_) {}
+    }
+    control = null;
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    if (old) old.close();
+    mode = null;
+    busy = false;
+    element("video").srcObject = null;
+    element("inbox").hidden = true;
+    element("outbox").hidden = true;
+    element("out").value = "";
+    element("incoming").value = "";
+    element("videoCaption").textContent = "Choose Start sharing to select a display or window, or Join a screen to watch another user.";
+    status(message || "Session stopped");
+    updateControls();
+}
+window.stopSharing = stopSharing;
+
+function setupControl(channel) {
+    control = channel;
+    channel.onmessage = event => {
+        if (event.data === "stop") stopSharing("The other user ended the session");
+    };
+    channel.onclose = () => {
+        if (channel === control && peer) stopSharing("The other user left the session");
+    };
+}
+function createPeer() {
+    const connection = new RTCPeerConnection({
+        iceServers: [{urls: "stun:stun.l.google.com:19302"}]
+    });
+    peer = connection;
+    connection.ondatachannel = event => setupControl(event.channel);
+    connection.ontrack = event => {
+        element("video").muted = false;
+        element("video").srcObject = event.streams[0] || new MediaStream([event.track]);
+        element("video").play().catch(() => {});
+        element("videoCaption").textContent = "Shared screen";
+    };
+    connection.onconnectionstatechange = () => {
+        if (connection !== peer) return;
+        if (connection.connectionState === "connected") {
+            element("inbox").hidden = true;
+            element("outbox").hidden = true;
+            status(mode === "sharing" ? "Sharing with the other user" : "Connected");
+        } else if (connection.connectionState === "failed") {
+            stopSharing("Could not establish a direct connection. Try the same network or a different network; some networks require a relay server.");
+        } else if (connection.connectionState === "disconnected") {
+            status("Connection interrupted. Waiting for the other user…");
+        }
+    };
+    return connection;
+}
+function waitForIce(connection) {
+    if (connection.iceGatheringState === "complete") return Promise.resolve();
+    return new Promise((resolve, reject) => {
+        const finish = error => {
+            clearTimeout(timer);
+            connection.removeEventListener("icegatheringstatechange", changed);
+            connection.removeEventListener("connectionstatechange", changed);
+            if (error) reject(error); else resolve();
+        };
+        const changed = () => {
+            if (connection.signalingState === "closed") finish(new Error("Session stopped"));
+            else if (connection.iceGatheringState === "complete") finish();
+        };
+        const timer = setTimeout(() => finish(new Error("Network discovery timed out. Check the connection and try again.")), 20000);
+        connection.addEventListener("icegatheringstatechange", changed);
+        connection.addEventListener("connectionstatechange", changed);
+    });
+}
+function encode(description) {
+    return "NS1." + btoa(JSON.stringify({version:1, type:description.type, sdp:description.sdp}));
+}
+function decode(text, expected) {
+    const code = text.trim();
+    if (!code.startsWith("NS1.") || code.length > 200000) throw new Error("This is not a valid Notcher screen-sharing code.");
+    let data;
+    try { data = JSON.parse(atob(code.slice(4))); }
+    catch (_) { throw new Error("The code is incomplete or invalid. Copy the entire code."); }
+    if (data.version !== 1 || data.type !== expected || typeof data.sdp !== "string" || !data.sdp.startsWith("v=0")) {
+        throw new Error(expected === "offer" ? "Paste an invitation code from the sharing user." : "Paste the response code from the viewing user.");
+    }
+    return {type:data.type, sdp:data.sdp};
+}
+function output(description, title, instruction) {
+    element("outputLabel").textContent = title;
+    element("out").value = encode(description);
+    element("instructions").textContent = instruction;
+    element("outbox").hidden = false;
+}
+async function perform(action) {
+    if (busy) return;
+    busy = true;
+    const current = generation;
+    updateControls();
+    try { await action(current); }
+    catch (error) {
+        if (current === generation) {
+            const message = error.name === "NotAllowedError" ? "Screen sharing was cancelled or permission was denied." : error.message;
+            stopSharing(message);
+        }
+    } finally {
+        if (current === generation) {
+            busy = false;
+            updateControls();
+        }
+    }
+}
+element("share").onclick = () => perform(async current => {
+    mode = "sharing";
+    const captured = await navigator.mediaDevices.getDisplayMedia({
+        video: {frameRate:{ideal:20, max:30}}, audio:false
+    });
+    if (current !== generation || !busy || mode !== "sharing") {
+        captured.getTracks().forEach(track => track.stop());
+        return;
+    }
+    stream = captured;
+    const connection = createPeer();
+    for (const track of stream.getTracks()) {
+        track.onended = () => { if (connection === peer) stopSharing("Screen sharing ended"); };
+        connection.addTrack(track, stream);
+    }
+    setupControl(connection.createDataChannel("session"));
+    element("video").muted = true;
+    element("video").srcObject = stream;
+    element("videoCaption").textContent = "Your shared screen";
+    status("Preparing invitation…");
+    await connection.setLocalDescription(await connection.createOffer());
+    await waitForIce(connection);
+    if (connection !== peer) return;
+    output(connection.localDescription, "Invitation code", "Send this code to the other Notcher user. Paste their response code above and select Connect.");
+    element("inputLabel").textContent = "Response code";
+    element("apply").textContent = "Connect";
+    element("inbox").hidden = false;
+    status("Waiting for the other user's response");
+});
+element("join").onclick = () => {
+    if (busy || peer) return;
+    mode = "viewing";
+    element("inputLabel").textContent = "Invitation code";
+    element("incoming").value = "";
+    element("apply").textContent = "Create response";
+    element("inbox").hidden = false;
+    status("Paste the invitation code from the sharing user");
+};
+element("apply").onclick = () => perform(async () => {
+    if (mode === "sharing" && peer) {
+        const answer = decode(element("incoming").value, "answer");
+        await peer.setRemoteDescription(answer);
+        status("Connecting…");
+        element("apply").disabled = true;
+    } else if (mode === "viewing" && !peer) {
+        const offer = decode(element("incoming").value, "offer");
+        const connection = createPeer();
+        status("Preparing response…");
+        await connection.setRemoteDescription(offer);
+        await connection.setLocalDescription(await connection.createAnswer());
+        await waitForIce(connection);
+        if (connection !== peer) return;
+        output(connection.localDescription, "Response code", "Send this response to the sharing user so they can select Connect.");
+        element("inbox").hidden = true;
+        status("Send the response code to finish connecting");
+    }
+});
+element("copy").onclick = () => {
+    element("out").focus();
+    element("out").select();
+    status(document.execCommand("copy") ? "Code copied" : "Select the code and press Ctrl+C to copy it");
+};
+element("stop").onclick = () => stopSharing();
+window.addEventListener("beforeunload", () => stopSharing());
+</script>
+</body>
+</html>
