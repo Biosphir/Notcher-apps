@@ -1,7 +1,7 @@
 {
   "id": "live-lyrics",
   "name": "Live Lyrics",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "min_notcher_version": "1.8.3",
   "entry_point": "live_lyrics",
   "bundled": false,
@@ -9,5 +9,5 @@
   "class": "LiveLyrics",
   "api_version": 1,
   "ui": "window",
-  "description": "Follow time-synced song lyrics from LRCLIB in a compact popup linked to Notcher music playback, with local caching and song-version selection."
+  "description": "Follow time-synced song lyrics from LRCLIB in a compact popup linked to Notcher music playback, with local caching and automatic song matching."
 }

@@ -127,6 +127,17 @@ def request_json(endpoint, params, cancelled):
         raise ProviderError("The lyrics service returned an unreadable response.") from None
 
 
+def select_record(track, records):
+    records = [record for record in records if usable_record(record)]
+    if not records:
+        return None
+    best_score = max(match_score(track, record) for record in records)
+    # LRCLIB has no revision timestamp. Prefer the newer record ID among
+    # equally close song matches, without selecting an unrelated newer song.
+    closest = [record for record in records if match_score(track, record) >= best_score - 0.02]
+    return max(closest, key=lambda record: int(record.get("id") or 0))
+
+
 def lookup(track, cancelled=lambda: False):
     params = {"track_name": track["title"], "artist_name": track.get("artist", "")}
     if track.get("album"):
@@ -144,12 +155,9 @@ def lookup(track, cancelled=lambda: False):
     candidates = [record for record in (results or []) if usable_record(record)] if isinstance(results, list) else []
     if usable_record(direct) and not any(item.get("id") == direct.get("id") for item in candidates):
         candidates.append(direct)
-    candidates.sort(key=lambda record: match_score(track, record), reverse=True)
-    matches = [record for record in candidates if confident_match(track, record)]
-    if len(matches) == 1:
-        return {"kind": "lyrics", "record": matches[0]}
-    if candidates:
-        return {"kind": "candidates", "records": candidates[:20]}
+    selected = select_record(track, candidates)
+    if selected:
+        return {"kind": "lyrics", "record": selected}
     return {"kind": "missing"}
 
 

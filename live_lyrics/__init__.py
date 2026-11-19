@@ -5,10 +5,10 @@ import sqlite3
 import time
 
 from PySide6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, QStandardPaths, QThread, QTimer, Qt, Signal
-from PySide6.QtWidgets import QApplication, QComboBox, QHBoxLayout, QLabel, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget
 
 from shared.window import NotcherWindow
-from .provider import Cancelled, LyricsCache, ProviderError, lookup, parse_lrc, track_key
+from .provider import Cancelled, LyricsCache, ProviderError, lookup, parse_lrc, select_record, track_key
 
 _workers = set()
 _shutdown_connected = False
@@ -49,9 +49,25 @@ class FetchWorker(QThread):
 
 class LiveLyrics(NotcherWindow):
     def __init__(self, cache_path=None):
-        super().__init__("Live Lyrics", (480, 360), (420, 320))
+        super().__init__("Live Lyrics", (480, 280), (420, 240))
         self.setWindowFlag(Qt.WindowType.Tool, True)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        self.setStyleSheet(self.styleSheet() + """
+            QFrame#notcherSurface {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #44304f, stop:1 #291f32);
+                border: 1px solid #51405b; border-radius: 24px;
+            }
+            QLabel#notcherWindowTitle { font-size: 13px; font-weight: 700; color: #ddcce4; }
+            QPushButton#windowControl { font-size: 12px; color: #ddcce4; }
+            QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }
+            QScrollBar::handle:vertical { background: #66516f; }
+        """)
+        for button in self.title_bar.findChildren(QPushButton):
+            button.hide()
+        self.title_bar.dialog = True
+        self.surface.layout().setContentsMargins(28, 18, 28, 18)
+        self.surface.layout().setSpacing(10)
         self.music = None
         self.track = {}
         self.key = None
@@ -68,50 +84,38 @@ class LiveLyrics(NotcherWindow):
         self.cache = LyricsCache(Path(cache_path) if cache_path else directory / "live-lyrics" / "cache.sqlite")
         layout = self.body_layout
         layout.setSpacing(7)
-        self.track_title = QLabel("Nothing playing")
+        self.track_title = QLabel("Nothing playing", self)
         self.track_title.setTextFormat(Qt.TextFormat.PlainText)
         self.track_title.setWordWrap(True)
         self.track_title.setMaximumHeight(44)
         self.track_title.setMinimumWidth(0)
-        self.track_title.setStyleSheet("font-size: 16px; font-weight: 600;")
-        self.artist = QLabel()
+        self.track_title.setStyleSheet("font-size: 14px; font-weight: 600; color: #f5ecf8;")
+        self.artist = QLabel(self)
         self.artist.setTextFormat(Qt.TextFormat.PlainText)
         self.artist.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        self.artist.setStyleSheet("color: #858585; font-size: 12px;")
+        self.artist.setStyleSheet("color: #c0aaca; font-size: 11px;")
         self.status = QLabel("Play a song to see its lyrics")
         self.status.setWordWrap(True)
         self.status.setStyleSheet("color: #a3a3a3; font-size: 12px;")
-        layout.addWidget(self.track_title)
-        layout.addWidget(self.artist)
+        self.track_title.hide()
+        self.artist.hide()
         layout.addWidget(self.status)
-        self.versions_widget = QWidget()
-        versions = QHBoxLayout(self.versions_widget)
-        versions.setContentsMargins(0, 0, 0, 0)
-        self.versions = QComboBox()
-        self.versions.setAccessibleName("Choose a matching song version")
-        self.versions.setMinimumContentsLength(10)
-        self.versions.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        versions.addWidget(self.versions, 1)
-        use = QPushButton("Use version")
-        use.clicked.connect(self.choose_version)
-        versions.addWidget(use)
-        layout.addWidget(self.versions_widget)
-        self.versions_widget.hide()
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setMinimumHeight(85)
+        self.scroll.viewport().setStyleSheet("background: transparent;")
         self.lyrics_widget = QWidget()
         self.lyrics_widget.setStyleSheet("background: transparent;")
         self.lyrics_layout = QVBoxLayout(self.lyrics_widget)
         self.lyrics_layout.setContentsMargins(0, 10, 4, 10)
-        self.lyrics_layout.setSpacing(10)
+        self.lyrics_layout.setSpacing(12)
         self.lyrics_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.scroll.setWidget(self.lyrics_widget)
         self.scroll.viewport().installEventFilter(self)
         self.scroll.verticalScrollBar().installEventFilter(self)
         self.scroll.verticalScrollBar().sliderPressed.connect(self.stop_following)
         self.scroll_animation = QPropertyAnimation(self.scroll.verticalScrollBar(), b"value", self)
-        self.scroll_animation.setDuration(180)
+        self.scroll_animation.setDuration(300)
         self.scroll_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         layout.addWidget(self.scroll, 1)
         footer = QHBoxLayout()
@@ -172,11 +176,10 @@ class LiveLyrics(NotcherWindow):
             if self.worker is not None:
                 self.worker.requestInterruption()
             self.clear_lines()
-            self.versions.clear()
-            self.versions_widget.hide()
             self.track_title.setText(track["title"] if key else "Nothing playing")
             self.artist.setText(track["artist"] if key else "")
             if key is None:
+                self.status.show()
                 self.status.setText("Play a song to see its lyrics")
             else:
                 cached = self.cache.get(key)
@@ -190,6 +193,7 @@ class LiveLyrics(NotcherWindow):
         self.retry_button.setEnabled(bool(self.key) and self.worker is None and self.pending is None and time.time() >= self.retry_at)
 
     def queue_lookup(self):
+        self.status.show()
         if time.time() < self.retry_at:
             self.status.setText("LRCLIB is busy. Please try again later.")
             return
@@ -235,23 +239,19 @@ class LiveLyrics(NotcherWindow):
 
     def apply_payload(self, payload):
         self.clear_lines()
-        self.versions_widget.hide()
+        self.status.show()
         kind = payload.get("kind")
+        if kind == "candidates":
+            # Resolve cached results produced by older app versions as well.
+            record = select_record(self.track, payload.get("records", []))
+            payload = {"kind": "lyrics", "record": record} if record else {"kind": "missing"}
+            kind = payload["kind"]
         if kind == "error":
             self.retry_at = payload.get("retry_at", 0)
             self.status.setText(payload.get("message", "Could not load lyrics."))
             return
         if kind == "missing":
             self.status.setText("Lyrics are not available for this song yet")
-            return
-        if kind == "candidates":
-            self.versions.clear()
-            for record in payload.get("records", []):
-                seconds = round(float(record.get("duration") or 0))
-                text = f'{record.get("trackName", "")} · {record.get("artistName", "")} · {seconds // 60}:{seconds % 60:02d}'
-                self.versions.addItem(text, record)
-            self.versions_widget.show()
-            self.status.setText("Choose the version that matches your song")
             return
         record = payload.get("record", {})
         if record.get("instrumental"):
@@ -263,38 +263,27 @@ class LiveLyrics(NotcherWindow):
             self.status.setText("Lyrics are not available for this song yet")
             return
         self.status.setText("Synced lyrics" if self.lines else "Unsynced lyrics")
+        self.status.setVisible(not bool(self.lines))
         for text in texts:
             label = QLabel(text)
             label.setTextFormat(Qt.TextFormat.PlainText)
             label.setWordWrap(True)
-            label.setMinimumHeight(24)
-            label.setStyleSheet("color: #858585; font-size: 15px;" if self.lines else "color: #eeeeee; font-size: 16px;")
+            label.setMinimumHeight(36)
+            label.setStyleSheet(self.line_style("#8e749b" if self.lines else "#f5ecf8"))
             self.lyrics_layout.addWidget(label)
             self.labels.append(label)
 
-    def choose_version(self):
-        self.poll_music()
-        record = self.versions.currentData()
-        if not isinstance(record, dict):
-            return
-        self.token += 1
-        self.pending = None
-        if self.worker is not None:
-            self.worker.requestInterruption()
-        payload = {"kind": "lyrics", "record": record}
-        self.store(payload)
-        self.apply_payload(payload)
-        self.poll_music()
+    @staticmethod
+    def line_style(color):
+        return f"color: {color}; font-size: 28px; font-weight: 750; background: transparent;"
 
     def highlight(self, index):
         if index == self.active_index:
             return
         self.active_index = index
         for number, label in enumerate(self.labels):
-            label.setStyleSheet(
-                "color: #f5f5f5; font-size: 20px; font-weight: 700;"
-                if number == index else "color: #777777; font-size: 15px;"
-            )
+            color = "#ffffff" if number == index else ("#c7afcf" if number < index else "#8e749b")
+            label.setStyleSheet(self.line_style(color))
         if self.following and index >= 0:
             self.lyrics_layout.activate()
             QTimer.singleShot(0, self.center_current_line)
@@ -325,6 +314,11 @@ class LiveLyrics(NotcherWindow):
             self.queue_lookup()
 
     def eventFilter(self, watched, event):
+        if watched == self.scroll.viewport() and event.type() == QEvent.Type.Resize:
+            padding = max(16, self.scroll.viewport().height() // 2 - 22)
+            self.lyrics_layout.setContentsMargins(0, padding, 8, padding)
+            if self.following:
+                QTimer.singleShot(0, self.center_current_line)
         if watched in (self.scroll.viewport(), self.scroll.verticalScrollBar()) and event.type() == QEvent.Type.Wheel:
             self.stop_following()
         return super().eventFilter(watched, event)
@@ -333,6 +327,11 @@ class LiveLyrics(NotcherWindow):
         self.poll_timer.start()
         self.poll_music()
         super().showEvent(event)
+
+    def hideEvent(self, event):
+        self.poll_timer.stop()
+        self.scroll_animation.stop()
+        super().hideEvent(event)
 
     def closeEvent(self, event):
         self.closing = True
