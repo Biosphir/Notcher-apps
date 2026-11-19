@@ -83,6 +83,10 @@ class LiveLyrics(NotcherWindow):
         for button in self.title_bar.findChildren(QPushButton):
             button.hide()
         self.is_pinned = False
+        self.resize_origin = None
+        self.resize_edges = Qt.Edge(0)
+        self.pinned_geometry = None
+        self.attached_height = self.height()
         self.pin_button = QPushButton()
         self.pin_button.setObjectName("windowControl")
         self.pin_button.setIcon(QIcon(str(Path(__file__).with_name("icon-pin.svg"))))
@@ -99,6 +103,7 @@ class LiveLyrics(NotcherWindow):
         self.close_button.hide()
         self.title_bar.layout().addWidget(self.close_button)
         self.title_bar.dialog = True
+        self.title_bar.setCursor(Qt.CursorShape.OpenHandCursor)
         self.surface.layout().setContentsMargins(28, 18, 28, 18)
         self.surface.layout().setSpacing(10)
         self.music = None
@@ -177,6 +182,8 @@ class LiveLyrics(NotcherWindow):
         self.retry_button.setEnabled(False)
         footer.addWidget(self.retry_button)
         layout.addLayout(footer)
+        self._notcher_grip.setToolTip("Drag to resize lyrics")
+        self._notcher_grip.hide()
         self.poll_timer = QTimer(self)
         self.poll_timer.setInterval(100)
         self.poll_timer.timeout.connect(self.poll_music)
@@ -204,6 +211,12 @@ class LiveLyrics(NotcherWindow):
         super().paintEvent(event)
 
     def set_pinned(self, pinned):
+        if pinned == self.is_pinned:
+            return
+        if pinned:
+            self.attached_height = self.height()
+        else:
+            self.pinned_geometry = self.geometry()
         self.is_pinned = pinned
         self.pin_button.setChecked(pinned)
         self.pin_button.setToolTip("Return lyrics to Music Overview" if pinned else "Pin lyrics as a separate frame")
@@ -212,8 +225,94 @@ class LiveLyrics(NotcherWindow):
         self.setWindowOpacity(1.0)
         self.overview_visible = None
         if pinned:
+            if self.pinned_geometry is not None:
+                self.setGeometry(self.pinned_geometry)
+            self._notcher_grip.show()
+            self.position_resize_grip()
+            for widget in [self, *self.findChildren(QWidget)]:
+                widget.setMouseTracking(True)
+            QApplication.instance().installEventFilter(self)
             self.show()
+            self.raise_()
             self.poll_timer.start()
+        else:
+            QApplication.instance().removeEventFilter(self)
+            self.finish_resize()
+            self._notcher_grip.hide()
+            self.resize(self.width(), self.attached_height)
+
+    def position_resize_grip(self):
+        self._notcher_grip.move(self.width() - 42, self.height() - 42)
+        self._notcher_grip.raise_()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "is_pinned") and self.is_pinned:
+            self.position_resize_grip()
+
+    def resize_edges_at(self, point):
+        rect = self.surface.geometry()
+        edges = Qt.Edge(0)
+        if not rect.adjusted(-8, -8, 8, 8).contains(point):
+            return edges
+        if abs(point.x() - rect.left()) <= 8:
+            edges |= Qt.Edge.LeftEdge
+        elif abs(point.x() - rect.right()) <= 8:
+            edges |= Qt.Edge.RightEdge
+        if abs(point.y() - rect.top()) <= 8:
+            edges |= Qt.Edge.TopEdge
+        elif abs(point.y() - rect.bottom()) <= 8:
+            edges |= Qt.Edge.BottomEdge
+        return edges
+
+    def finish_resize(self):
+        if self.resize_origin is not None:
+            self.releaseMouse()
+        self.resize_origin = None
+        self.resize_edges = Qt.Edge(0)
+        self.unsetCursor()
+
+    def handle_resize_event(self, event):
+        point = self.mapFromGlobal(event.globalPosition().toPoint())
+        edges = self.resize_edges if self.resize_origin is not None else self.resize_edges_at(point)
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton and edges:
+                self.resize_origin = self.geometry()
+                self.resize_start = event.globalPosition().toPoint()
+                self.resize_edges = edges
+                self.grabMouse()
+                return True
+        elif event.type() == QEvent.Type.MouseMove:
+            if self.resize_origin is not None:
+                delta = event.globalPosition().toPoint() - self.resize_start
+                rect = QRectF(self.resize_origin).toRect()
+                if edges & Qt.Edge.LeftEdge:
+                    rect.setLeft(min(rect.left() + delta.x(), rect.right() - self.minimumWidth() + 1))
+                if edges & Qt.Edge.RightEdge:
+                    rect.setRight(max(rect.right() + delta.x(), rect.left() + self.minimumWidth() - 1))
+                if edges & Qt.Edge.TopEdge:
+                    rect.setTop(min(rect.top() + delta.y(), rect.bottom() - self.minimumHeight() + 1))
+                if edges & Qt.Edge.BottomEdge:
+                    rect.setBottom(max(rect.bottom() + delta.y(), rect.top() + self.minimumHeight() - 1))
+                self.setGeometry(rect)
+                return True
+            cursor = Qt.CursorShape.ArrowCursor
+            if edges in (Qt.Edge.LeftEdge | Qt.Edge.TopEdge, Qt.Edge.RightEdge | Qt.Edge.BottomEdge):
+                cursor = Qt.CursorShape.SizeFDiagCursor
+            elif edges in (Qt.Edge.RightEdge | Qt.Edge.TopEdge, Qt.Edge.LeftEdge | Qt.Edge.BottomEdge):
+                cursor = Qt.CursorShape.SizeBDiagCursor
+            elif edges & (Qt.Edge.LeftEdge | Qt.Edge.RightEdge):
+                cursor = Qt.CursorShape.SizeHorCursor
+            elif edges:
+                cursor = Qt.CursorShape.SizeVerCursor
+            if edges:
+                self.setCursor(cursor)
+            else:
+                self.unsetCursor()
+        elif event.type() == QEvent.Type.MouseButtonRelease and self.resize_origin is not None:
+            self.finish_resize()
+            return True
+        return False
 
     def set_overview_visible(self, visible, geometry=None):
         if self.closing or self.dismiss_pending or self.is_pinned:
@@ -436,6 +535,10 @@ class LiveLyrics(NotcherWindow):
             self.queue_lookup()
 
     def eventFilter(self, watched, event):
+        if (self.is_pinned and isinstance(watched, QWidget) and watched.window() == self
+                and event.type() in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseMove, QEvent.Type.MouseButtonRelease)):
+            if self.handle_resize_event(event):
+                return True
         if watched == self.scroll.viewport() and event.type() == QEvent.Type.Resize:
             padding = max(16, self.scroll.viewport().height() // 2 - 22)
             self.lyrics_layout.setContentsMargins(0, padding, 8, padding)
@@ -472,6 +575,8 @@ class LiveLyrics(NotcherWindow):
 
     def closeEvent(self, event):
         self.closing = True
+        QApplication.instance().removeEventFilter(self)
+        self.finish_resize()
         self.reveal_animation.stop()
         self.poll_timer.stop()
         self.lookup_timer.stop()
