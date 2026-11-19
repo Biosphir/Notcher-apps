@@ -4,7 +4,8 @@ from pathlib import Path
 import sqlite3
 import time
 
-from PySide6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, QStandardPaths, QThread, QTimer, Qt, Signal
+from PySide6.QtCore import QEasingCurve, QEvent, QParallelAnimationGroup, QPropertyAnimation, QRectF, QSize, QStandardPaths, QThread, QTimer, Qt, Signal
+from PySide6.QtGui import QColor, QIcon, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget
 
 from shared.window import NotcherWindow
@@ -47,9 +48,25 @@ class FetchWorker(QThread):
             self.result_ready.emit(self.token, payload)
 
 
+class LyricLine(QLabel):
+    clicked = Signal()
+
+    def mousePressEvent(self, event):
+        self.press_position = event.position()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if (event.button() == Qt.MouseButton.LeftButton
+                and hasattr(self, "press_position")
+                and (event.position() - self.press_position).manhattanLength() < 6):
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
+
+
 class LiveLyrics(NotcherWindow):
     def __init__(self, cache_path=None):
-        super().__init__("Live Lyrics", (480, 280), (420, 240))
+        super().__init__("Live Lyrics", (504, 304), (444, 264))
+        self.layout().setContentsMargins(18, 18, 18, 18)
         self.setWindowFlag(Qt.WindowType.Tool, True)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
         self.setStyleSheet(self.styleSheet() + """
@@ -65,10 +82,37 @@ class LiveLyrics(NotcherWindow):
         """)
         for button in self.title_bar.findChildren(QPushButton):
             button.hide()
+        self.is_pinned = False
+        self.pin_button = QPushButton()
+        self.pin_button.setObjectName("windowControl")
+        self.pin_button.setIcon(QIcon(str(Path(__file__).with_name("icon-pin.svg"))))
+        self.pin_button.setIconSize(QSize(16, 16))
+        self.pin_button.setCheckable(True)
+        self.pin_button.setToolTip("Pin lyrics as a separate frame")
+        self.pin_button.setAccessibleName("Pin lyrics")
+        self.pin_button.toggled.connect(self.set_pinned)
+        self.title_bar.layout().addWidget(self.pin_button)
+        self.close_button = QPushButton("×")
+        self.close_button.setObjectName("windowControl")
+        self.close_button.setAccessibleName("Close lyrics")
+        self.close_button.clicked.connect(self.dismiss)
+        self.close_button.hide()
+        self.title_bar.layout().addWidget(self.close_button)
         self.title_bar.dialog = True
         self.surface.layout().setContentsMargins(28, 18, 28, 18)
         self.surface.layout().setSpacing(10)
         self.music = None
+        self.overview_visible = None
+        self.overview_geometry = None
+        self.dismiss_pending = False
+        self.reveal_animation = QParallelAnimationGroup(self)
+        self.reveal_opacity = QPropertyAnimation(self, b"windowOpacity")
+        self.reveal_geometry = QPropertyAnimation(self, b"geometry")
+        for animation in (self.reveal_opacity, self.reveal_geometry):
+            animation.setDuration(220)
+            animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+            self.reveal_animation.addAnimation(animation)
+        self.reveal_animation.finished.connect(self.finish_reveal)
         self.track = {}
         self.key = None
         self.token = 0
@@ -115,7 +159,7 @@ class LiveLyrics(NotcherWindow):
         self.scroll.verticalScrollBar().installEventFilter(self)
         self.scroll.verticalScrollBar().sliderPressed.connect(self.stop_following)
         self.scroll_animation = QPropertyAnimation(self.scroll.verticalScrollBar(), b"value", self)
-        self.scroll_animation.setDuration(300)
+        self.scroll_animation.setDuration(650)
         self.scroll_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         layout.addWidget(self.scroll, 1)
         footer = QHBoxLayout()
@@ -147,6 +191,65 @@ class LiveLyrics(NotcherWindow):
 
     def bind_music(self, music):
         self.music = music
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        rect = QRectF(self.surface.geometry()).translated(0, 3)
+        for spread in range(13, 0, -1):
+            painter.setPen(QPen(QColor(0, 0, 0, round(15 * (1 - spread / 14) ** 2)), 2))
+            painter.drawRoundedRect(rect.adjusted(-spread, -spread, spread, spread), 24 + spread, 24 + spread)
+        painter.end()
+        super().paintEvent(event)
+
+    def set_pinned(self, pinned):
+        self.is_pinned = pinned
+        self.pin_button.setChecked(pinned)
+        self.pin_button.setToolTip("Return lyrics to Music Overview" if pinned else "Pin lyrics as a separate frame")
+        self.close_button.setVisible(pinned)
+        self.reveal_animation.stop()
+        self.setWindowOpacity(1.0)
+        self.overview_visible = None
+        if pinned:
+            self.show()
+            self.poll_timer.start()
+
+    def set_overview_visible(self, visible, geometry=None):
+        if self.closing or self.dismiss_pending or self.is_pinned:
+            return
+        if self.overview_visible == visible and (not visible or self.overview_geometry == geometry):
+            return
+        self.overview_visible = visible
+        if geometry is not None:
+            self.overview_geometry = geometry
+        self.reveal_animation.stop()
+        if visible and not self.isVisible():
+            self.setGeometry(geometry.translated(0, 8))
+            self.setWindowOpacity(0)
+            self.show()
+            self.raise_()
+        if not self.isVisible():
+            return
+        target = self.overview_geometry or self.geometry()
+        self.reveal_opacity.setStartValue(self.windowOpacity())
+        self.reveal_opacity.setEndValue(1.0 if visible else 0.0)
+        self.reveal_geometry.setStartValue(self.geometry())
+        self.reveal_geometry.setEndValue(target if visible else target.translated(0, -6))
+        self.reveal_animation.start()
+
+    def finish_reveal(self):
+        if self.dismiss_pending:
+            self.close()
+        elif not self.overview_visible:
+            self.hide()
+
+    def dismiss(self):
+        self.is_pinned = False
+        self.set_overview_visible(False)
+        self.dismiss_pending = True
+        if not self.isVisible():
+            self.close()
 
     def clear_lines(self):
         self.scroll_animation.stop()
@@ -264,14 +367,27 @@ class LiveLyrics(NotcherWindow):
             return
         self.status.setText("Synced lyrics" if self.lines else "Unsynced lyrics")
         self.status.setVisible(not bool(self.lines))
-        for text in texts:
-            label = QLabel(text)
+        for index, text in enumerate(texts):
+            label = LyricLine(text)
+            if self.lines and self.music is not None and hasattr(self.music, "seek_to"):
+                stamp = self.lines[index][0]
+                label.setCursor(Qt.CursorShape.PointingHandCursor)
+                label.setToolTip("Play from this line")
+                label.clicked.connect(lambda key=self.key, seconds=stamp: self.seek_line(key, seconds))
             label.setTextFormat(Qt.TextFormat.PlainText)
             label.setWordWrap(True)
             label.setMinimumHeight(36)
-            label.setStyleSheet(self.line_style("#8e749b" if self.lines else "#f5ecf8"))
+            label.lyric_color = "#8e749b" if self.lines else "#f5ecf8"
+            label.setStyleSheet(self.line_style(label.lyric_color))
             self.lyrics_layout.addWidget(label)
             self.labels.append(label)
+
+    def seek_line(self, key, seconds):
+        self.poll_music()
+        if self.key == key and self.music is not None and hasattr(self.music, "seek_to"):
+            if self.music.seek_to(seconds):
+                self.resume_following()
+                self.poll_music()
 
     @staticmethod
     def line_style(color):
@@ -283,7 +399,9 @@ class LiveLyrics(NotcherWindow):
         self.active_index = index
         for number, label in enumerate(self.labels):
             color = "#ffffff" if number == index else ("#c7afcf" if number < index else "#8e749b")
-            label.setStyleSheet(self.line_style(color))
+            if label.lyric_color != color:
+                label.lyric_color = color
+                label.setStyleSheet(self.line_style(color))
         if self.following and index >= 0:
             self.lyrics_layout.activate()
             QTimer.singleShot(0, self.center_current_line)
@@ -294,9 +412,13 @@ class LiveLyrics(NotcherWindow):
         label = self.labels[self.active_index]
         bar = self.scroll.verticalScrollBar()
         target = label.y() + label.height() // 2 - self.scroll.viewport().height() // 2
+        target = max(bar.minimum(), min(bar.maximum(), target))
+        if self.scroll_animation.state() == QPropertyAnimation.State.Running and self.scroll_animation.endValue() == target:
+            return
         self.scroll_animation.stop()
         self.scroll_animation.setStartValue(bar.value())
-        self.scroll_animation.setEndValue(max(bar.minimum(), min(bar.maximum(), target)))
+        self.scroll_animation.setEndValue(target)
+        self.scroll_animation.setDuration(650)
         self.scroll_animation.start()
 
     def stop_following(self):
@@ -320,13 +442,28 @@ class LiveLyrics(NotcherWindow):
             if self.following:
                 QTimer.singleShot(0, self.center_current_line)
         if watched in (self.scroll.viewport(), self.scroll.verticalScrollBar()) and event.type() == QEvent.Type.Wheel:
+            bar = self.scroll.verticalScrollBar()
+            old_target = self.scroll_animation.endValue() if self.scroll_animation.state() == QPropertyAnimation.State.Running else bar.value()
             self.stop_following()
+            pixels, angle = event.pixelDelta().y(), event.angleDelta().y()
+            if pixels:
+                bar.setValue(bar.value() - pixels)
+                return True
+            if angle:
+                base = old_target if (old_target - bar.value()) * (-angle) >= 0 else bar.value()
+                target = max(bar.minimum(), min(bar.maximum(), round(base - angle / 120 * 100)))
+                self.scroll_animation.setStartValue(bar.value())
+                self.scroll_animation.setEndValue(target)
+                self.scroll_animation.setDuration(360)
+                self.scroll_animation.start()
+                return True
         return super().eventFilter(watched, event)
 
     def showEvent(self, event):
         self.poll_timer.start()
         self.poll_music()
         super().showEvent(event)
+        QTimer.singleShot(0, self.center_current_line)
 
     def hideEvent(self, event):
         self.poll_timer.stop()
@@ -335,6 +472,7 @@ class LiveLyrics(NotcherWindow):
 
     def closeEvent(self, event):
         self.closing = True
+        self.reveal_animation.stop()
         self.poll_timer.stop()
         self.lookup_timer.stop()
         self.scroll_animation.stop()
