@@ -1,7 +1,7 @@
 {
   "id": "live-lyrics",
   "name": "Live Lyrics",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "min_notcher_version": "1.8.3",
   "entry_point": "live_lyrics",
   "bundled": false,
