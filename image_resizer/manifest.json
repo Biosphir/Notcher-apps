@@ -1,0 +1,13 @@
+{
+  "id": "image-resizer",
+  "name": "Image Resizer",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "image_resizer",
+  "bundled": false,
+  "module": "image_resizer",
+  "class": "ImageResizer",
+  "api_version": 1,
+  "ui": "window",
+  "description": "Resize images in pixels, keep aspect ratio and save a new PNG, JPG or WebP copy offline, with preview and compression quality."
+}

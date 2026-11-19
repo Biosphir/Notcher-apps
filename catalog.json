@@ -124,5 +124,44 @@
     "api_version": 1,
     "ui": "window",
     "description": "Follow time-synced song lyrics from LRCLIB in a compact popup linked to Notcher music playback, with local caching and automatic song matching."
+  },
+  {
+    "id": "image-resizer",
+    "name": "Image Resizer",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "image_resizer",
+    "bundled": false,
+    "module": "image_resizer",
+    "class": "ImageResizer",
+    "api_version": 1,
+    "ui": "window",
+    "description": "Resize images in pixels, keep aspect ratio and save a new PNG, JPG or WebP copy offline, with preview and compression quality."
+  },
+  {
+    "id": "text-tools",
+    "name": "Text Tools",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "text_tools",
+    "bundled": false,
+    "module": "text_tools",
+    "class": "TextTools",
+    "api_version": 1,
+    "ui": "window",
+    "description": "Clean text offline: uppercase, lowercase, title case, trim spaces, remove duplicate or blank lines, sort lines, count words and characters, undo and copy."
+  },
+  {
+    "id": "unit-converter",
+    "name": "Unit Converter",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "unit_converter",
+    "bundled": false,
+    "module": "unit_converter",
+    "class": "UnitConverter",
+    "api_version": 1,
+    "ui": "window",
+    "description": "Convert length, weight, temperature, data sizes and area offline, with instant results, unit swapping and clipboard copy. Supports metric and imperial units."
   }
 ]

@@ -1,0 +1,13 @@
+{
+  "id": "text-tools",
+  "name": "Text Tools",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "text_tools",
+  "bundled": false,
+  "module": "text_tools",
+  "class": "TextTools",
+  "api_version": 1,
+  "ui": "window",
+  "description": "Clean text offline: uppercase, lowercase, title case, trim spaces, remove duplicate or blank lines, sort lines, count words and characters, undo and copy."
+}

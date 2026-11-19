@@ -1,0 +1,13 @@
+{
+  "id": "unit-converter",
+  "name": "Unit Converter",
+  "version": "1.0.0",
+  "min_notcher_version": "1.8.3",
+  "entry_point": "unit_converter",
+  "bundled": false,
+  "module": "unit_converter",
+  "class": "UnitConverter",
+  "api_version": 1,
+  "ui": "window",
+  "description": "Convert length, weight, temperature, data sizes and area offline, with instant results, unit swapping and clipboard copy. Supports metric and imperial units."
+}
