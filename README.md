@@ -24,6 +24,8 @@ Run `python build_packages.py --tag apps-v1.0.0` to generate packages and a cata
 
 ## Offline utilities
 
+Notcher 1.8.4 uses standard Windows file/folder pickers through the shared NotcherFileDialog API. App frames and ordinary messages retain Notcher styling.
+
 - **Image Resizer** previews a local image, adjusts pixel dimensions with an optional aspect-ratio lock, and saves a new PNG/JPG/WebP copy using the available Qt image writers. Originals are protected; JPG transparency becomes white. Saving runs in a worker and commits atomically. Images/output are limited to 80 megapixels and 16,384 pixels per side.
 - **Text Tools** changes case, trims lines, removes duplicate/blank lines, sorts lines, counts words/characters/lines, and copies text. Apply works on the selected text or the entire document, and transformations can be undone. Text stays in memory until copied; it is not persisted between sessions.
 - **Unit Converter** converts length, weight, temperature, data size, and area with instant results, unit swapping, and result copying. Data units distinguish decimal KB/MB/GB/TB from binary KiB/MiB/GiB/TiB. Temperatures below absolute zero are rejected.

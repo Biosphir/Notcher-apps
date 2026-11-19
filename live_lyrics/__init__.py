@@ -92,7 +92,11 @@ class LiveLyrics(NotcherWindow):
         self.pin_button.setIcon(QIcon(str(Path(__file__).with_name("icon-pin.svg"))))
         self.pin_button.setIconSize(QSize(16, 16))
         self.pin_button.setCheckable(True)
-        self.pin_button.setToolTip("Pin lyrics as a separate frame")
+        self.pin_button.setStyleSheet("""
+            QPushButton, QPushButton:hover, QPushButton:pressed, QPushButton:checked {
+                background: transparent; border: none; padding: 3px 5px;
+            }
+        """)
         self.pin_button.setAccessibleName("Pin lyrics")
         self.pin_button.toggled.connect(self.set_pinned)
         self.title_bar.layout().addWidget(self.pin_button)
@@ -219,7 +223,7 @@ class LiveLyrics(NotcherWindow):
             self.pinned_geometry = self.geometry()
         self.is_pinned = pinned
         self.pin_button.setChecked(pinned)
-        self.pin_button.setToolTip("Return lyrics to Music Overview" if pinned else "Pin lyrics as a separate frame")
+        self.pin_button.setAccessibleName("Unpin lyrics" if pinned else "Pin lyrics")
         self.close_button.setVisible(pinned)
         self.reveal_animation.stop()
         self.setWindowOpacity(1.0)
