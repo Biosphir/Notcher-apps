@@ -111,5 +111,18 @@
     "api_version": 1,
     "ui": "window",
     "description": "Pick a color from any connected display and copy its HEX or RGB value."
+  },
+  {
+    "id": "live-lyrics",
+    "name": "Live Lyrics",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.3",
+    "entry_point": "live_lyrics",
+    "bundled": false,
+    "module": "live_lyrics",
+    "class": "LiveLyrics",
+    "api_version": 1,
+    "ui": "window",
+    "description": "Follow time-synced song lyrics from LRCLIB in a compact popup linked to Notcher music playback, with local caching and song-version selection."
   }
 ]

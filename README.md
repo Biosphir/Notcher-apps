@@ -13,6 +13,7 @@ Each app is released as an independent `.notcher-app` ZIP package. Notcher downl
 | screen_recorder | Screen Recorder | No |
 | focus_timer | Focus Timer | No |
 | color_picker | Color Picker | No |
+| live_lyrics | Live Lyrics | No |
 
 ## Build and release
 
@@ -51,3 +52,13 @@ Focus and short/long break durations are adjustable. After four focus sessions, 
 ## Color Picker
 
 The picker freezes snapshots of connected displays. Click a pixel to select its color, or press Escape to cancel. The app displays and copies HEX and RGB values and remembers the last selected color.
+
+## Live Lyrics
+
+Installing Live Lyrics enables the microphone icon on the left of Music Overview's playback controls. The host binds the active media controller to the app's bind_music method. The popup follows song changes, pause, resume and seek through the controller's media_snapshot API.
+
+Lyrics and timestamps are retrieved from LRCLIB using title, artist, album and duration. The client identifies itself with a User-Agent, performs requests off the UI thread, respects rate-limit responses, and stores a bounded SQLite cache on the device. Playback position stays local.
+
+Matching uses title, artist and duration. Ambiguous records are offered for manual version selection. Timed LRC lines are highlighted and followed automatically; plain lyrics are displayed as unsynced. Manual scrolling pauses following until Follow song is selected. Refresh bypasses the cached result. Instrumental, missing metadata, unavailable lyrics and service/network failures have dedicated states.
+
+The popup defaults to 480 × 360 and uses shared Notcher window styling. Initial lyrics retrieval requires internet access. Cache hits can be displayed offline.
