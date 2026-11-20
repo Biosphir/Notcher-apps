@@ -14,6 +14,7 @@ Each app is released as an independent `.notcher-app` ZIP package. Notcher downl
 | focus_timer | Focus Timer | No |
 | color_picker | Color Picker | No |
 | live_lyrics | Live Lyrics | No |
+| quick_translation | Quick Translation | No |
 | image_resizer | Image Resizer | No |
 | text_tools | Text Tools | No |
 | unit_converter | Unit Converter | No |

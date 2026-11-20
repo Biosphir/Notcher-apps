@@ -163,5 +163,19 @@
     "api_version": 1,
     "ui": "window",
     "description": "Convert length, weight, temperature, data sizes and area offline, with instant results, unit swapping and clipboard copy. Supports metric and imperial units."
+  },
+  {
+    "id": "quick-translation",
+    "name": "Quick Translation",
+    "version": "1.0.0",
+    "min_notcher_version": "1.8.4",
+    "entry_point": "quick_translation",
+    "bundled": false,
+    "module": "quick_translation",
+    "class": "QuickTranslation",
+    "api_version": 1,
+    "ui": "window",
+    "category": "Productivity",
+    "description": "Translate selected text from Notcher notes and task details in a compact popup. Choose languages; selected text is sent to MyMemory."
   }
 ]
