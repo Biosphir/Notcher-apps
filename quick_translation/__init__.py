@@ -7,7 +7,7 @@ import sys
 from urllib.parse import urlencode
 
 from PySide6.QtCore import QLocale, QPoint, QSettings, QSize, QTimer, QUrl, Qt
-from PySide6.QtGui import QGuiApplication, QIcon, QTextDocument
+from PySide6.QtGui import QGuiApplication, QIcon, QTextDocument, QTextOption
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QVBoxLayout
 
@@ -115,15 +115,23 @@ class QuickTranslation(NotcherWindow):
         self.input = QPlainTextEdit()
         self.input.setPlaceholderText("Type or paste text to translate")
         self.input.setAccessibleName("Source text")
-        field_style = "font-size: 14px; background: transparent; border: none; padding: 4px;"
+        field_style = """
+            QPlainTextEdit { font-size: 14px; background: #131313; border: none; padding: 0; }
+            QScrollBar:vertical { background: transparent; width: 7px; margin: 0; }
+            QScrollBar::handle:vertical { background: #505050; border-radius: 3px; min-height: 20px; }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+        """
         self.input.setStyleSheet(field_style)
-        self.input.textChanged.connect(self.queue_translation)
         actions = QHBoxLayout()
+        self.language_actions = actions
         self.source, self.target = QComboBox(), QComboBox()
         self.source.setAccessibleName("Source language")
         self.target.setAccessibleName("Target language")
         self.source.addItem("Auto-detect", "auto")
-        self.target.addItem("Automatic", "auto")
+        self.target.addItem(LANGUAGE_NAMES[regional_language()] + " · Default", "auto")
+        self.target.setItemData(0, "Use your region’s language. Switch to the fallback when the source matches it.",
+                                Qt.ItemDataRole.ToolTipRole)
         for combo in (self.source, self.target):
             combo.setStyleSheet("""
                 QComboBox { background: transparent; border: 1px solid transparent; }
@@ -140,7 +148,6 @@ class QuickTranslation(NotcherWindow):
             combo.setCurrentIndex(max(0, combo.findData(saved)))
             combo.currentIndexChanged.connect(lambda _index, field=combo, path=key:
                                               self.settings.setValue(path, field.currentData()))
-            combo.currentIndexChanged.connect(self.queue_translation)
         actions.addWidget(self.source, 1)
         swap = QPushButton(QIcon(str(Path(__file__).with_name("icon-sync.svg"))), "")
         swap.setIconSize(QSize(16, 16))
@@ -158,6 +165,7 @@ class QuickTranslation(NotcherWindow):
         swap.setStyleSheet(button_style)
         self.body_layout.addLayout(actions)
         fields = QFrame()
+        self.fields = fields
         fields.setObjectName("translationFields")
         fields.setStyleSheet("QFrame#translationFields { background: #131313; border-radius: 8px; }")
         fields_layout = QVBoxLayout(fields)
@@ -176,13 +184,23 @@ class QuickTranslation(NotcherWindow):
         self.output.setPlaceholderText("Translation")
         self.output.setAccessibleName("Translation result")
         self.output.setStyleSheet(field_style)
+        for field in (self.input, self.output):
+            field.setFrameShape(QFrame.Shape.NoFrame)
+            field.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            field.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            field.document().setDocumentMargin(8)
+            field.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
         fields_layout.addWidget(self.output)
         self.body_layout.addWidget(fields)
         self.body_layout.addWidget(self.direction)
         provider = QLabel("Selected text is sent to MyMemory for translation.")
+        self.provider_label = provider
         provider.setStyleSheet("color: #a1a1a1; font-size: 10px;")
         self.body_layout.addWidget(provider)
         self.show_result("")
+        self.input.textChanged.connect(self.queue_translation)
+        self.source.currentIndexChanged.connect(self.queue_translation)
+        self.target.currentIndexChanged.connect(self.queue_translation)
 
     def show_selection(self, text, anchor):
         self.anchor = QPoint(anchor)
@@ -198,18 +216,34 @@ class QuickTranslation(NotcherWindow):
 
     def show_result(self, text):
         self.output.setPlainText(text)
+        self.resize_fields()
+
+    def resize_fields(self):
         screen = QGuiApplication.screenAt(self.anchor) if self.anchor is not None else self.screen()
         bounds = (screen or QGuiApplication.primaryScreen()).availableGeometry()
         source_text = self.input.toPlainText()
-        width = min(bounds.width(), max(350, min(460, 320 + max(len(text), len(source_text)) // 3)))
-        for field, content, maximum in ((self.input, source_text, 112), (self.output, text, 200)):
+        result_text = self.output.toPlainText()
+        width = min(bounds.width(), max(360, min(560, 340 + max(len(result_text), len(source_text)) // 2)))
+        field_limit = min(168, max(48, (bounds.height() - 145) // 2))
+        for field, content in ((self.input, source_text), (self.output, result_text)):
             document = QTextDocument()
             document.setDefaultFont(field.font())
+            document.setDocumentMargin(field.document().documentMargin())
             document.setPlainText(content)
-            document.setTextWidth(width - 64)
-            height = round(document.size().height()) + 12
-            field.setFixedHeight(max(42, min(maximum, height)))
-        self.resize(width, max(self.minimumHeight(), self.sizeHint().height()))
+            document.setTextWidth(max(1, width - 65))
+            height = round(document.size().height()) + 8
+            field.setFixedHeight(max(46, min(field_limit, height)))
+        self.fields.setFixedHeight(self.input.height() + self.output.height() + 7)
+        chrome = self.surface.layout()
+        height = (self.layout().contentsMargins().top() + self.layout().contentsMargins().bottom()
+                  + chrome.contentsMargins().top() + chrome.contentsMargins().bottom()
+                  + self.title_bar.sizeHint().height() + chrome.spacing()
+                  + self.language_actions.sizeHint().height() + self.fields.height()
+                  + self.provider_label.sizeHint().height() + 2 * self.body_layout.spacing())
+        if not self.direction.isHidden():
+            height += self.direction.sizeHint().height() + self.body_layout.spacing()
+        self.setMinimumHeight(max(160, height))
+        self.resize(width, self.minimumHeight())
         if self.anchor is not None:
             x = max(bounds.left(), min(self.anchor.x(), bounds.right() - self.width() + 1))
             y = self.anchor.y() - self.height() - 8
@@ -224,8 +258,7 @@ class QuickTranslation(NotcherWindow):
 
     def queue_translation(self):
         self.cancel_request()
-        self.direction.hide()
-        self.show_result("")
+        self.resize_fields()
         self.delay.start()
 
     def translate(self):
@@ -245,11 +278,15 @@ class QuickTranslation(NotcherWindow):
             self.show_result(str(error))
             return
         self.language_pair = f"{source}|{target}"
+        self.target.setItemText(0, LANGUAGE_NAMES[target if self.target.currentData() == "auto" else regional_language()] + " · Default")
         self.direction.setText(f"{LANGUAGE_NAMES[source]} → {LANGUAGE_NAMES[target]}")
         self.direction.show()
         self.parts = deque(split_text(text))
         self.results = []
-        self.show_result("Translating…")
+        if not self.output.toPlainText():
+            self.show_result("Translating…")
+        else:
+            self.resize_fields()
         self.fetch_next()
 
     def swap_languages(self):
