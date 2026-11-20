@@ -60,6 +60,13 @@ class QuickTranslation(NotcherWindow):
         self.source.setAccessibleName("Source language")
         self.target.setAccessibleName("Target language")
         for combo in (self.source, self.target):
+            combo.setStyleSheet("""
+                QComboBox { background: transparent; border: 1px solid transparent; }
+                QComboBox::drop-down { background: transparent; border: none; }
+                QComboBox:hover, QComboBox:focus, QComboBox:on {
+                    background: #191919; border-color: #383838;
+                }
+            """)
             for name, code in LANGUAGES:
                 combo.addItem(name, code)
         self.target.setCurrentIndex(1)
@@ -67,6 +74,12 @@ class QuickTranslation(NotcherWindow):
         actions.addWidget(QLabel("→"))
         actions.addWidget(self.target, 1)
         translate = QPushButton("Translate")
+        translate.setStyleSheet("""
+            QPushButton { background: transparent; border: 1px solid transparent; }
+            QPushButton:hover, QPushButton:focus, QPushButton:pressed {
+                background: #191919; border-color: #383838;
+            }
+        """)
         translate.clicked.connect(self.translate)
         actions.addWidget(translate)
         self.body_layout.addLayout(actions)
