@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QFile, QIODevice, QUrl
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEnginePermission, QWebEngineSettings
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QComboBox, QDialog, QDialogButtonBox, QLabel
@@ -12,7 +12,7 @@ from shared.window import NotcherDialog, NotcherWindow
 
 class SharePage(QWebEnginePage):
     def acceptNavigationRequest(self, url, navigation_type, is_main_frame):
-        return url.scheme() == "data" or url.toString() == "about:blank" or url.host() == "notcher.local"
+        return url.scheme() == "data" or url.toString() == "about:blank"
 
 
 class ShareScreen(NotcherWindow):
@@ -33,6 +33,20 @@ class ShareScreen(NotcherWindow):
         layout.addWidget(self.web)
         html = (Path(__file__).parent / "screen.html").read_text(encoding="utf-8-sig")
         html = html.replace('font: 14px "Segoe UI", sans-serif', 'font: 14px ' + json.dumps(QApplication.font().family()) + ', sans-serif')
+        try:
+            from PySide6.QtWebChannel import QWebChannel
+        except ImportError:
+            pass
+        else:
+            script = QFile(":/qtwebchannel/qwebchannel.js")
+            if script.open(QIODevice.OpenModeFlag.ReadOnly):
+                from .account_signaling import AccountSignaling
+                self.account_signaling = AccountSignaling(self)
+                self.account_channel = QWebChannel(self.page)
+                self.account_channel.registerObject("signaling", self.account_signaling)
+                self.page.setWebChannel(self.account_channel)
+                html = html.replace("<!-- webchannel -->", "<script>" + bytes(script.readAll()).decode() + "</script>")
+                script.close()
         self.web.setHtml(html, QUrl("https://notcher.local/"))
 
     def permission_requested(self, permission):

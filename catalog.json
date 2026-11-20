@@ -50,7 +50,7 @@
   {
     "id": "share-screen",
     "name": "Share Screen",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "min_notcher_version": "1.8.3",
     "entry_point": "share_screen",
     "bundled": false,
@@ -58,7 +58,7 @@
     "class": "ShareScreen",
     "api_version": 1,
     "ui": "window",
-    "description": "Share a display or window with another Notcher user over a direct peer-to-peer connection using invitation and response codes."
+    "description": "Share a display or window with devices on the same Notcher account, or connect with another user using invitation and response codes."
   },
   {
     "id": "extended-display",

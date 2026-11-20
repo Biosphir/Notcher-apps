@@ -47,9 +47,11 @@ Packages contain their manifest and app folder. Additional third-party dependenc
 
 ## Share Screen
 
-Both users install Share Screen in Notcher. The sharing user selects **Start sharing**, chooses a display or window, and sends the invitation code to the viewer. The viewer selects **Join a screen**, pastes the invitation, and returns the generated response code. The sharing user pastes that response and selects **Connect**.
+Install and open Share Screen on both devices. With both devices signed in to the same Notcher account, select **Share with my devices**, choose a display or window, then select **Accept** on the receiving device. Invitations expire after three minutes, and only one device can accept each invitation. Account sharing requires the updated Notcher host and the Notcher Cloud signaling schema.
 
-Video uses a direct WebRTC connection with a public STUN server for network discovery. This first release uses manual code exchange and has no TURN relay. Some firewall or NAT configurations require a different network. Either user can stop the session. Closing the app stops its capture and connection.
+To share across accounts, select **Share with a code** and send the invitation. The viewer selects **Join with a code**, pastes the invitation, and returns the response. Paste that response and select **Connect**.
+
+Supabase exchanges invitation and response data for account sharing. Video uses a direct WebRTC connection with a public STUN server for network discovery. Some networks without a direct route require a TURN relay or a different network. Either participant can stop the session.
 
 ## Extended Display
 
