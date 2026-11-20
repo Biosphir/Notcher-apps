@@ -167,7 +167,7 @@
   {
     "id": "quick-translation",
     "name": "Quick Translation",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "min_notcher_version": "1.8.4",
     "entry_point": "quick_translation",
     "bundled": false,
@@ -176,6 +176,6 @@
     "api_version": 1,
     "ui": "window",
     "category": "Productivity",
-    "description": "Translate selected text from Notcher notes and task details in a compact popup. Choose languages; selected text is sent to MyMemory."
+    "description": "Translate selected text in a compact popup with local language detection, automatic region preferences, and saved choices. Translation is sent to MyMemory."
   }
 ]
