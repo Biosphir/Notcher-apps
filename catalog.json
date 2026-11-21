@@ -58,7 +58,7 @@
     "class": "ShareScreen",
     "api_version": 1,
     "ui": "window",
-    "description": "Share a display or window with devices on the same Notcher account, or connect with another user using invitation and response codes."
+    "description": "Share a display or window with devices on the same Notcher account. Allow mouse and keyboard control for a shared Windows display, or use codes for view-only sharing."
   },
   {
     "id": "extended-display",

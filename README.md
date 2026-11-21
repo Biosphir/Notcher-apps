@@ -47,7 +47,9 @@ Packages contain their manifest and app folder. Additional third-party dependenc
 
 ## Share Screen
 
-Install and open Share Screen on both devices. With both devices signed in to the same Notcher account, select **Share with my devices**, choose a display or window, then select **Accept** on the receiving device. Invitations expire after three minutes, and only one device can accept each invitation. Account sharing requires the updated Notcher host and the Notcher Cloud signaling schema.
+Install and open Share Screen on both devices. With both devices signed in to the same Notcher account, select **Share with my devices**, choose a display or window, then select **Accept** on the receiving device. Invitations expire after three minutes, and only one device can accept each invitation. Account sharing is available with Share Screen 1.1.0 on Notcher 1.8.4 using Notcher Cloud.
+
+On the Windows sender, share an entire display and select **Allow remote control** after the viewer connects. Confirm the display in the approval dialog. The viewer can click the video to use the mouse and keyboard. Select **Stop remote control** or press **Ctrl+Alt+Shift+F12** on the sender to revoke control. The viewer can release keyboard focus with **Alt+Shift+Escape**. Windows secure screens and some locally reserved shortcuts remain under local Windows control.
 
 To share across accounts, select **Share with a code** and send the invitation. The viewer selects **Join with a code**, pastes the invitation, and returns the response. Paste that response and select **Connect**.
 

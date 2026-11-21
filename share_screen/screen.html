@@ -19,6 +19,7 @@ textarea { width: 100%; min-height: 76px; resize: vertical; background: #171717;
 textarea:focus { outline: 1px solid #a73a93; }
 main { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; }
 #status { color: #aaa; min-height: 24px; }
+#video:focus-visible { outline: 2px solid #be60aa; }
 video { width: 100%; background: #111; border-radius: 8px; max-height: 72vh; }
 section[hidden], div[hidden], button[hidden] { display: none; }
 #outbox, #accountInbox { margin-top: 16px; }
@@ -57,7 +58,8 @@ section[hidden], div[hidden], button[hidden] { display: none; }
 </div>
 </section>
 <section>
-<video id="video" autoplay playsinline controls></video>
+<video id="video" autoplay playsinline controls tabindex="0"></video>
+<button id="controlFocus" hidden>Use mouse and keyboard</button>
 <p id="videoCaption">Open Share Screen on both devices to connect through your account, or use a code.</p>
 </section>
 </main>
@@ -72,6 +74,13 @@ let mode = null;
 let busy = false;
 let generation = 0;
 let accountBridge = null;
+let remoteInput = null;
+let viewerReady = false;
+let viewerGrant = "";
+let viewerDriving = false;
+let movePending = false;
+let latestMove = null;
+
 let account = null;
 let accountAvailable = false;
 let accountInvites = [];
@@ -137,6 +146,7 @@ async function refreshAccount() {
                     session.answerReceived = true;
                     const connection = peer;
                     await connection.setRemoteDescription(decode(offer.answer, "answer"));
+                    reportControlReady();
                     if (session === accountSession && connection.connectionState !== "connected") status("Connecting…");
                     signal("remove", session).catch(() => {});
                 }
@@ -167,21 +177,43 @@ async function refreshAccount() {
     }
 }
 
-if (typeof QWebChannel !== "undefined" && window.qt?.webChannelTransport) {
-    new QWebChannel(qt.webChannelTransport, channel => {
-        accountBridge = channel.objects.signaling;
-        accountBridge.reply.connect((id, payload) => {
-            const callback = requests.get(id);
-            if (!callback) return;
-            requests.delete(id);
-            callback(JSON.parse(payload));
-        });
-        element("intro").textContent = "Share with another device on your Notcher account, or connect using codes.";
-        element("accountShare").hidden = false;
-        updateControls();
-        refreshAccount();
-        setInterval(refreshAccount, 3000);
+function startAccountTransport(signaling, input) {
+    accountBridge = signaling;
+    remoteInput = input;
+    remoteInput.permission_changed.connect(grant => sendControl({type: "grant", grant}));
+    accountBridge.reply.connect((id, payload) => {
+        const callback = requests.get(id);
+        if (!callback) return;
+        requests.delete(id);
+        callback(JSON.parse(payload));
     });
+    element("intro").textContent = "Share with another device on your Notcher account, or connect using codes.";
+    element("accountShare").hidden = false;
+    updateControls();
+    refreshAccount();
+    setInterval(refreshAccount, 3000);
+}
+if (typeof QWebChannel !== "undefined" && window.qt?.webChannelTransport) {
+    new QWebChannel(qt.webChannelTransport, ({objects}) => {
+        startAccountTransport(objects.signaling, objects.remoteInput);
+    });
+} else if (window.notcherConsolePrefix) {
+    const subscribers = {};
+    const event = name => ({connect: callback => { subscribers[name] = callback; }});
+    const call = name => (...args) => console.info(window.notcherConsolePrefix + JSON.stringify([name, args]));
+    window.receiveNotcherMessage = ([name, ...args]) => subscribers[name]?.(...args);
+    // Run after initialization of the video and its input handlers.
+    queueMicrotask(() => startAccountTransport(
+        {send: call("send"), reply: event("reply")},
+        {
+            peer_ready: call("peer_ready"),
+            heartbeat: call("heartbeat"),
+            release_input: call("release_input"),
+            keyboard: call("keyboard"),
+            pointer: call("pointer"),
+            permission_changed: event("permission_changed")
+        }
+    ));
 }
 
 function status(text) { element("status").textContent = text; }
@@ -197,6 +229,10 @@ function updateControls() {
 }
 function stopSharing(message) {
     generation++;
+    viewerReady = false;
+    remoteInput?.peer_ready(false);
+    setViewerGrant("");
+
     const session = accountSession;
     accountSession = null;
     if (session?.id && !session.answerReceived) signal("remove", session).catch(() => {});
@@ -224,15 +260,154 @@ function stopSharing(message) {
 }
 window.stopSharing = stopSharing;
 
+function sendControl(message) {
+    if (control?.readyState !== "open" || control.bufferedAmount > 65536) return;
+    try { control.send(JSON.stringify(message)); } catch (_) {}
+}
+function sameAccountRole(role) {
+    return Boolean(accountSession?.answerReceived && accountSession.account === account &&
+        mode === role && peer?.connectionState === "connected" && control?.readyState === "open");
+}
+function reportControlReady() {
+    if (!remoteInput) return;
+    remoteInput.peer_ready(viewerReady && sameAccountRole("sharing"));
+    if (sameAccountRole("viewing")) sendControl({type: "ready"});
+}
+function handleControl(message) {
+    if (!message || typeof message !== "object") return;
+    if (message.type === "grant" && sameAccountRole("viewing") &&
+        typeof message.grant === "string" && message.grant.length <= 36) {
+        setViewerGrant(message.grant);
+        return;
+    }
+    if (!remoteInput) return;
+    if (message.type === "ready" && accountSession?.id && mode === "sharing") {
+        viewerReady = true;
+        reportControlReady();
+        return;
+    }
+    if (!sameAccountRole("sharing") || typeof message.grant !== "string" || message.grant.length !== 36) return;
+    if (message.type === "heartbeat") remoteInput.heartbeat(message.grant);
+    if (message.type === "release") remoteInput.release_input(message.grant);
+    if (message.type === "key" && typeof message.code === "string" && typeof message.down === "boolean") {
+        remoteInput.keyboard(message.grant, message.code, message.down);
+    }
+    if (message.type === "pointer" && typeof message.action === "string" &&
+        Number.isFinite(message.x) && Number.isFinite(message.y) && Number.isInteger(message.value)) {
+        remoteInput.pointer(message.grant, message.action, message.x, message.y, message.value);
+    }
+}
 function setupControl(channel) {
+    if (channel.label !== "session" || control) {
+        channel.close();
+        return;
+    }
     control = channel;
+    channel.onopen = reportControlReady;
     channel.onmessage = event => {
-        if (event.data === "stop") stopSharing("The other user ended the session");
+        if (channel !== control || typeof event.data !== "string") return;
+        if (event.data === "stop") {
+            stopSharing("The other user ended the session");
+        } else if (event.data.length <= 512) {
+            try { handleControl(JSON.parse(event.data)); } catch (_) {}
+        }
     };
     channel.onclose = () => {
         if (channel === control && peer) stopSharing("The other user left the session");
     };
 }
+
+const video = element("video");
+function setViewerGrant(grant) {
+    if (viewerGrant === grant) return;
+    releaseViewerInput();
+    viewerGrant = grant;
+    video.controls = !grant;
+    element("controlFocus").hidden = !grant;
+    if (grant) status("Remote control is allowed. Click the video to control the shared display.");
+    else if (sameAccountRole("viewing")) status("Remote control stopped. Viewing only.");
+}
+function viewerInput(message) {
+    if (viewerGrant && sameAccountRole("viewing")) sendControl({...message, grant: viewerGrant});
+}
+function releaseViewerInput() {
+    viewerInput({type: "release"});
+    viewerDriving = false;
+    latestMove = null;
+}
+function pointOnVideo(event, clamp) {
+    const rect = video.getBoundingClientRect();
+    const scale = Math.min(rect.width / video.videoWidth, rect.height / video.videoHeight);
+    const width = video.videoWidth * scale, height = video.videoHeight * scale;
+    if (!(width > 0 && height > 0)) return null;
+    const x = (event.clientX - rect.left - (rect.width - width) / 2) / width;
+    const y = (event.clientY - rect.top - (rect.height - height) / 2) / height;
+    if (!clamp && (x < 0 || x > 1 || y < 0 || y > 1)) return null;
+    return {x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y))};
+}
+function sendPointer(action, point, value) {
+    if (point) viewerInput({type: "pointer", action, ...point, value});
+}
+function focusRemote() {
+    if (viewerGrant) {
+        video.focus();
+        viewerDriving = true;
+        status("Remote control active. Alt+Shift+Escape releases local input.");
+    }
+}
+element("controlFocus").onclick = focusRemote;
+video.addEventListener("pointerdown", event => {
+    if (!viewerGrant || event.pointerType !== "mouse" || event.button > 2) return;
+    const point = pointOnVideo(event, false);
+    if (!point) return;
+    event.preventDefault();
+    focusRemote();
+    video.setPointerCapture(event.pointerId);
+    sendPointer("down", point, event.button);
+});
+video.addEventListener("pointerup", event => {
+    if (!viewerDriving || event.pointerType !== "mouse") return;
+    event.preventDefault();
+    sendPointer("up", pointOnVideo(event, true), event.button);
+});
+video.addEventListener("pointermove", event => {
+    if (!viewerDriving || event.pointerType !== "mouse") return;
+    latestMove = pointOnVideo(event, video.hasPointerCapture(event.pointerId));
+    if (movePending) return;
+    movePending = true;
+    requestAnimationFrame(() => {
+        movePending = false;
+        if (viewerDriving) sendPointer("move", latestMove, 0);
+    });
+});
+video.addEventListener("wheel", event => {
+    if (!viewerDriving) return;
+    const point = pointOnVideo(event, false);
+    if (!point) return;
+    event.preventDefault();
+    const magnitude = amount => Math.max(1, Math.min(10, Math.round(Math.abs(amount) / 100)));
+    if (event.deltaY) sendPointer("wheel", point, -Math.sign(event.deltaY) * magnitude(event.deltaY) * 120);
+    if (event.deltaX) sendPointer("horizontal", point, Math.sign(event.deltaX) * magnitude(event.deltaX) * 120);
+}, {passive: false});
+video.addEventListener("contextmenu", event => { if (viewerGrant) event.preventDefault(); });
+video.addEventListener("pointercancel", releaseViewerInput);
+video.addEventListener("blur", releaseViewerInput);
+window.addEventListener("blur", releaseViewerInput);
+document.addEventListener("visibilitychange", () => { if (document.hidden) releaseViewerInput(); });
+for (const type of ["keydown", "keyup"]) video.addEventListener(type, event => {
+    if (!viewerDriving) return;
+    event.preventDefault();
+    if (event.code === "Escape" && event.altKey && event.shiftKey) {
+        releaseViewerInput();
+        element("controlFocus").focus();
+        return;
+    }
+    viewerInput({type: "key", code: event.code, down: type === "keydown"});
+});
+setInterval(() => {
+    if (viewerGrant) viewerInput({type: "heartbeat"});
+    else if (sameAccountRole("viewing")) sendControl({type: "ready"});
+}, 900);
 function createPeer() {
     const connection = new RTCPeerConnection({
         iceServers: [{urls: "stun:stun.l.google.com:19302"}]
@@ -248,12 +423,15 @@ function createPeer() {
     connection.onconnectionstatechange = () => {
         if (connection !== peer) return;
         if (connection.connectionState === "connected") {
+            reportControlReady();
             element("inbox").hidden = true;
             element("outbox").hidden = true;
             status(mode === "sharing" ? "Sharing with the other user" : "Connected");
         } else if (connection.connectionState === "failed") {
             stopSharing("Could not establish a direct connection. Try the same network or a different network; some networks require a relay server.");
         } else if (connection.connectionState === "disconnected") {
+            remoteInput?.peer_ready(false);
+            setViewerGrant("");
             status("Connection interrupted. Waiting for the other user…");
         }
     };
@@ -374,6 +552,7 @@ function acceptInvite(invite) {
         await signal("answer", {account: signedIn, id: invite.id, code: encode(connection.localDescription)});
         if (current !== generation) return;
         accountSession = {account: signedIn, answerReceived: true};
+        reportControlReady();
         if (connection.connectionState !== "connected") status("Connecting…");
         setTimeout(() => {
             if (connection === peer && connection.connectionState !== "connected") {
