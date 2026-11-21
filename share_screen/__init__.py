@@ -2,12 +2,18 @@
 import json
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QFile, QIODevice, QUrl
+try:
+    from PySide6.QtWebChannel import QWebChannel
+except ImportError:
+    QWebChannel = None  # Older packaged Notcher builds can still use manual pairing.
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEnginePermission, QWebEngineSettings
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QComboBox, QDialog, QDialogButtonBox, QLabel
 from PySide6.QtGui import QColor
 from shared.window import NotcherDialog, NotcherWindow
+
+from .account_signaling import AccountSignaling
 
 
 class SharePage(QWebEnginePage):
@@ -22,6 +28,11 @@ class ShareScreen(NotcherWindow):
         self.web = QWebEngineView()
         self.page = SharePage(self.web)
         self.web.setPage(self.page)
+        self.signaling = AccountSignaling(self)
+        if QWebChannel is not None:
+            self.channel = QWebChannel(self.page)
+            self.channel.registerObject("accountSignaling", self.signaling)
+            self.page.setWebChannel(self.channel)
         self.page.setBackgroundColor(QColor('#080808'))
         self.page.settings().setAttribute(QWebEngineSettings.WebAttribute.ScreenCaptureEnabled, True)
         self.page.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, True)
@@ -33,6 +44,10 @@ class ShareScreen(NotcherWindow):
         layout.addWidget(self.web)
         html = (Path(__file__).parent / "screen.html").read_text(encoding="utf-8-sig")
         html = html.replace('font: 14px "Segoe UI", sans-serif', 'font: 14px ' + json.dumps(QApplication.font().family()) + ', sans-serif')
+        channel_script = QFile(":/qtwebchannel/qwebchannel.js")
+        if channel_script.open(QIODevice.OpenModeFlag.ReadOnly):
+            html = html.replace("<!-- QWebChannel -->", "<script>" +
+                                bytes(channel_script.readAll()).decode("utf-8") + "</script>")
         self.web.setHtml(html, QUrl("https://notcher.local/"))
 
     def permission_requested(self, permission):
@@ -84,6 +99,7 @@ class ShareScreen(NotcherWindow):
             self.showNormal()
 
     def closeEvent(self, event):
-        self.page.runJavaScript("window.stopSharing && window.stopSharing();")
+        self.page.setWebChannel(None)
+        self.signaling.close()
         self.page.setHtml("")
         super().closeEvent(event)
