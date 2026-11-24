@@ -1,7 +1,7 @@
 {
   "id": "text-tools",
   "name": "Text Tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "min_notcher_version": "1.8.3",
   "entry_point": "text_tools",
   "bundled": false,

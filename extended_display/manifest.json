@@ -1,7 +1,7 @@
 {
   "id": "extended-display",
   "name": "Extended Display",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "min_notcher_version": "1.8.3",
   "entry_point": "extended_display",
   "bundled": false,

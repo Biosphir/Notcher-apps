@@ -4,6 +4,7 @@ import hashlib
 import json
 import zipfile
 from pathlib import Path
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent
 
@@ -30,12 +31,20 @@ def build(output, tag):
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o100644 << 16
                 archive.writestr(info, data)
-        catalog.append({
+        published = {
             **entry,
             "download_url": f"https://github.com/Biosphir/Notcher-apps/releases/download/{tag}/{filename}",
             "sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
             "size": target.stat().st_size,
-        })
+        }
+        icon = next((folder / name for name in ("icon.png", "icon.svg") if (folder / name).is_file()), None)
+        if icon is not None:
+            icon_path = icon.relative_to(ROOT).as_posix()
+            published.update({
+                "icon_url": f"https://raw.githubusercontent.com/Biosphir/Notcher-apps/{quote(tag, safe='')}/{icon_path}",
+                "icon_sha256": hashlib.sha256(icon.read_bytes()).hexdigest(),
+            })
+        catalog.append(published)
     (output / "catalog.json").write_text(json.dumps(catalog, indent=2) + "\n", encoding="utf-8")
     print(f"Built {len(catalog)} independent app packages in {output}")
 

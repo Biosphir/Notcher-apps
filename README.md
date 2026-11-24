@@ -35,6 +35,8 @@ All three use shared Notcher frames and work without accounts or network access.
 
 To release changes, update the affected app's `manifest.json` and its entry in `catalog.json`, commit, then push a new `apps-v*` tag. GitHub Actions publishes each package and the catalog as release assets. App versions are independent of the release tag.
 
+Put `icon.svg` or `icon.png` next to the app's manifest. The package includes the icon, and the generated release catalog points to the tagged icon and includes its SHA-256 so Notcher can show and cache it before installation.
+
 The live catalog is available at https://github.com/Biosphir/Notcher-apps/releases/latest/download/catalog.json.
 
 ## Host API
