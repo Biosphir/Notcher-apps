@@ -1,10 +1,10 @@
 {
-  "schema": 1,
-  "id": "791d8b74-f18e-49c0-af22-fcb8c366f8ff",
-  "workspace": "840241a7-db26-4a87-8875-ae5d4e37cfe0",
-  "github_release_url": "https://github.com/Biosphir/Notcher-apps",
-  "github_url": "https://github.com/Biosphir/Notcher-apps",
-  "main_file": null,
-  "pyinstaller_command": "",
-  "version": ""
+    "schema":  1,
+    "id":  "e210b52e-1ceb-4a09-ab87-856889462571",
+    "workspace":  "6be850e2-8c32-456c-8cb0-86be0365ad9a",
+    "github_release_url":  "https://github.com/Biosphir/Notcher-apps",
+    "github_url":  "https://github.com/Biosphir/Notcher-apps",
+    "main_file":  null,
+    "pyinstaller_command":  "",
+    "version":  ""
 }
